@@ -38,8 +38,5 @@ if __name__ == '__main__':
         'http://' + target_server, 
         path))
 
-    f = open('/tmp/test.ts', 'wb')
     for data in streamer.iter_content():
         sys.stdout.write(data)
-        f.write(data)
-        f.flush()
