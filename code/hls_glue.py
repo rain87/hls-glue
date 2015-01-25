@@ -6,17 +6,23 @@
 
 target_server = 'kirito.la.net.ua'
 
+import logging
+import logging.config
+import os
+logging.config.fileConfig(os.path.join(os.path.dirname(__file__), 'logging.conf'))
+
 
 from m3u8_streamer import M3u8Streamer
 from urlparse import urljoin
 import sys
 import re
-import os
-
 
 if __name__ == '__main__':
+    logger = logging.getLogger('main')
+    logger.info('starting')
     # get url
     line = sys.stdin.readline().strip()
+    logger.info('read {}'.format(line))
     path = re.match('GET (/.*) HTTP/\d\.\d', line).group(1).replace('.ts', '.m3u8')
 
     # skip rest of http header
@@ -34,7 +40,6 @@ if __name__ == '__main__':
 
     f = open('/tmp/test.ts', 'wb')
     for data in streamer.iter_content():
-        #sys.stdout.write(data)
-        os.write(sys.stdout.fileno(), data)
+        sys.stdout.write(data)
         f.write(data)
         f.flush()

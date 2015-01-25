@@ -4,6 +4,7 @@ import requests
 import m3u8
 from time import time
 from urlparse import urljoin
+import logging
 
 
 class M3u8Streamer(object):
@@ -14,13 +15,14 @@ class M3u8Streamer(object):
         """
         @param url: m3u8 playlist url to load
         """
+        self._logger = logging.getLogger('M3u8Streamer')
         self._url = url
         self._chunks = Queue()
         self._loader = Thread(target=self._loader_main)
         self._loader.daemon = True
         self._cond = Condition()
         self._stop_loader = False
-        self._last_loaded_segment = None
+        self._last_loaded_segments = []
         with self._cond:
             self._loader.start()
             self._cond.wait()
@@ -48,20 +50,24 @@ class M3u8Streamer(object):
             self._ts_pls_load = time()
             pls = m3u8.load(self._url)
             playback_time = 0
-            if self._last_loaded_segment == pls.segments[0]:
-                del pls.segments[0]
+            self._logger.debug('Got {} segments'.format(len(pls.segments)))
             for segment in pls.segments:
-                playback_time += segment.duration
-                self._load_segment(segment)
                 if self._stop_loader:
                     break
-            sleep_time = playback_time - (time() - self._ts_pls_load) - (pls.segments[-1].duration / 2)
-            self._last_loaded_segment = pls.segments[-1].uri
+                playback_time += segment.duration
+                if segment.uri in self._last_loaded_segments:
+                    self._logger.warning('Dropping overlapped segment {}'.format(segment.uri))
+                    continue
+                self._load_segment(segment)
+            sleep_time = playback_time - (time() - self._ts_pls_load) - pls.segments[-1].duration
+            self._last_loaded_segments = [segment.uri for segment in pls.segments]
             if not self._stop_loader and sleep_time > 0:
+                self._logger.info('Going sleep for {}'.format(sleep_time))
                 with self._cond:
                     self._cond.wait(sleep_time)
 
     def _load_segment(self, segment):
+        self._logger.info('Loading segment {}'.format(segment.uri))
         url = segment.base_uri + '/' + segment.uri
         req = requests.get(url, stream=True)
         for chunk in req.iter_content(chunk_size=512 * 1024):
@@ -69,4 +75,4 @@ class M3u8Streamer(object):
                 self._chunks.put(chunk)
             if self._stop_loader:
                 break
-        pass
+        self._logger.info('Done')
