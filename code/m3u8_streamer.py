@@ -19,7 +19,6 @@ class M3u8Streamer(object):
         self._url = url
         self._chunks = Queue()
         self._loader = Thread(target=self._loader_main)
-        self._loader.daemon = True
         self._cond = Condition()
         self._stop_loader = False
         self._last_loaded_segments = []
@@ -36,8 +35,11 @@ class M3u8Streamer(object):
         """
         self._stop_loader = True
         if self._loader.is_alive():
-            self._cond.notify_all()
+            self._logger.info('stopping thread')
+            with self._cond:
+                self._cond.notify_all()
             self._loader.join()
+            self._logger.info('stopped')
 
     def iter_content(self):
         while self._loader.is_alive() or not self._chunks.empty():

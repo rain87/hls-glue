@@ -39,4 +39,9 @@ if __name__ == '__main__':
         path))
 
     for data in streamer.iter_content():
-        sys.stdout.write(data)
+        try:
+            sys.stdout.write(data)
+        except:
+            logger.exception('While sending response. Stopping server')
+            break
+    streamer.stop()
