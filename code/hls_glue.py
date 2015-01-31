@@ -16,8 +16,9 @@ from m3u8_streamer import M3u8Streamer
 from urlparse import urljoin
 import sys
 import re
+from cStringIO import StringIO
 
-if __name__ == '__main__':
+def main():
     logger = logging.getLogger('main')
     logger.info('starting')
     # get url
@@ -39,9 +40,24 @@ if __name__ == '__main__':
         path))
 
     for data in streamer.iter_content():
+        if not data:
+            logger.error('Streamer has failed to return data')
+            break
         try:
             sys.stdout.write(data)
         except:
             logger.exception('While sending response. Stopping server')
             break
     streamer.stop()
+
+
+if __name__ == '__main__':
+    try:
+        sys.stderr.close()
+        sys.stderr = StringIO()
+        main()
+    except:
+        logging.getLogger('main').exception('Unexpected exception')
+    data = sys.stderr.getvalue()
+    if data:
+        logging.getLogger('main').error(data)
