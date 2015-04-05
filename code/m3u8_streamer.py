@@ -5,6 +5,7 @@ import m3u8
 from time import time
 from urlparse import urljoin
 import logging
+import urllib2
 
 
 class M3u8Streamer(object):
@@ -62,8 +63,15 @@ class M3u8Streamer(object):
         with self._cond:
             self._cond.notify_all()
         while not self._stop_loader:
-            self._ts_pls_load = time()
-            pls = m3u8.load(self._url)
+            ts_pls_load = time()
+            try:
+                pls = m3u8.load(self._url)
+            except urllib2.HTTPError as e:
+                self._logger.warning('Network error while loading m3u8: {};'
+                    ' retrying in small timeout'.format(e))
+                with self._cond:
+                    self._cond.wait(2)
+                continue
             playback_time = 0
             self._last_data_recv = time()
             self._logger.debug('Got {} segments'.format(len(pls.segments)))
@@ -75,7 +83,7 @@ class M3u8Streamer(object):
                     self._logger.warning('Dropping overlapped segment {}'.format(segment.uri))
                     continue
                 self._load_segment(segment)
-            sleep_time = playback_time - (time() - self._ts_pls_load) - pls.segments[-1].duration
+            sleep_time = playback_time - (time() - ts_pls_load) - pls.segments[-1].duration
             self._last_loaded_segments = [segment.uri for segment in pls.segments]
             self._last_data_recv = time()
             if not self._stop_loader and sleep_time > 0:
