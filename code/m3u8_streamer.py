@@ -83,9 +83,9 @@ class M3u8Streamer(object):
                     self._logger.warning('Dropping overlapped segment {}'.format(segment.uri))
                     continue
                 self._load_segment(segment)
+                self._last_data_recv = time()
             sleep_time = playback_time - (time() - ts_pls_load) - pls.segments[-1].duration
             self._last_loaded_segments = [segment.uri for segment in pls.segments]
-            self._last_data_recv = time()
             if not self._stop_loader and sleep_time > 0:
                 self._logger.info('Going sleep for {}'.format(sleep_time))
                 self._last_data_recv += sleep_time
