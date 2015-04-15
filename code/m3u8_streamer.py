@@ -95,13 +95,18 @@ class M3u8Streamer(object):
     def _load_segment(self, segment):
         self._logger.info('Loading segment {}'.format(segment.uri))
         url = segment.base_uri + '/' + segment.uri
+        ts_start = time()
+        size = 0
         req = requests.get(url, stream=True)
         for chunk in req.iter_content(chunk_size=512 * 1024):
             if chunk:
+                size += len(chunk)
                 self._chunks.put(chunk)
             if self._stop_loader:
                 break
-        self._logger.info('Done')
+        duration = time() - ts_start
+        size /= 1e6
+        self._logger.info('Done ({} Mb in {} seconds @ {} Mb/s)'.format(size, duration, size / duration))
 
     def _watchdog_main(self):
         while not self._stop_loader:
