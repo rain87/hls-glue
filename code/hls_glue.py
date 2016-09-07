@@ -17,6 +17,7 @@ from urlparse import urljoin
 import sys
 import re
 from cStringIO import StringIO
+from time import time
 
 def main():
     logger = logging.getLogger('main')
@@ -39,15 +40,24 @@ def main():
         'http://' + target_server, 
         path))
 
+    last_stat_flush = time()
+    size = duration = 0
     for data in streamer.iter_content():
         if not data:
             logger.error('Streamer has failed to return data')
             break
+        ts_start = time()
         try:
             sys.stdout.write(data)
         except:
             logger.exception('While sending response. Stopping server')
             break
+        duration += time() - ts_start
+        size += len(data) / 1e6
+        if time() - last_stat_flush > 1:
+            logger.info('Sent ({} Mb in {} seconds @ {} Mb/s)'.format(size, duration, size / duration))
+            size = duration = 0
+            last_stat_flush = time()
     streamer.stop()
 
 
