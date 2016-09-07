@@ -24,7 +24,7 @@ class M3u8Streamer(object):
         self._cond = Condition()
         self._stop_loader = False
         self._last_loaded_segments = []
-        self._no_data_timeout = 20
+        self._no_data_timeout = 30
         self._last_data_recv = time()
         self._watchdog.start()
         with self._cond:
@@ -86,8 +86,8 @@ class M3u8Streamer(object):
                 self._last_data_recv = time()
             sleep_time = playback_time - (time() - ts_pls_load) - pls.segments[-1].duration
             self._last_loaded_segments = [segment.uri for segment in pls.segments]
+            self._logger.info('Sleep is {}'.format(sleep_time))
             if not self._stop_loader and sleep_time > 0:
-                self._logger.info('Going sleep for {}'.format(sleep_time))
                 self._last_data_recv += sleep_time
                 with self._cond:
                     self._cond.wait(sleep_time)

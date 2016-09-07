@@ -4,7 +4,7 @@
 # requests
 # m3u8
 
-target_server = 'kirito.la.net.ua'
+target_server = 'kiev4-cdn.lanet.tv'
 
 import logging
 import logging.config
