@@ -73,7 +73,6 @@ class M3u8Streamer(object):
                     self._cond.wait(2)
                 continue
             playback_time = 0
-            self._last_data_recv = time()
             self._logger.debug('Got {} segments'.format(len(pls.segments)))
             for segment in pls.segments:
                 if self._stop_loader:
@@ -83,7 +82,6 @@ class M3u8Streamer(object):
                     self._logger.warning('Dropping overlapped segment {}'.format(segment.uri))
                     continue
                 self._load_segment(segment)
-                self._last_data_recv = time()
             sleep_time = playback_time - (time() - ts_pls_load) - pls.segments[-1].duration
             self._last_loaded_segments = [segment.uri for segment in pls.segments]
             self._logger.info('Sleep is {}'.format(sleep_time))
@@ -102,6 +100,7 @@ class M3u8Streamer(object):
             if chunk:
                 size += len(chunk)
                 self._chunks.put(chunk)
+                self._last_data_recv = time()
             if self._stop_loader:
                 break
         duration = time() - ts_start
