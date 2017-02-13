@@ -73,7 +73,9 @@ class M3u8Streamer(object):
                     self._cond.wait(2)
                 continue
             playback_time = 0
+            self._last_data_recv = time()
             self._logger.debug('Got {} segments'.format(len(pls.segments)))
+            video_bytes_loaded = 0
             for segment in pls.segments:
                 if self._stop_loader:
                     break
@@ -81,7 +83,11 @@ class M3u8Streamer(object):
                 if segment.uri in self._last_loaded_segments:
                     self._logger.warning('Dropping overlapped segment {}'.format(segment.uri))
                     continue
-                self._load_segment(segment)
+                video_bytes_loaded += self._load_segment(segment)
+                self._last_data_recv = time()
+            if video_bytes_loaded == 0:
+                self._logger.error('Failed to load video data, aborting')
+                break
             sleep_time = playback_time - (time() - ts_pls_load) - pls.segments[-1].duration
             self._last_loaded_segments = [segment.uri for segment in pls.segments]
             self._logger.info('Sleep is {}'.format(sleep_time))
@@ -100,12 +106,12 @@ class M3u8Streamer(object):
             if chunk:
                 size += len(chunk)
                 self._chunks.put(chunk)
-                self._last_data_recv = time()
             if self._stop_loader:
                 break
         duration = time() - ts_start
         size /= 1e6
         self._logger.info('Done ({} Mb in {} seconds @ {} Mb/s)'.format(size, duration, size / duration))
+        return size
 
     def _watchdog_main(self):
         while not self._stop_loader:
